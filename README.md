@@ -8,13 +8,14 @@ CoTShield helps uncover what advanced language models are really “thinking”�
 As AI systems grow more capable and strategic, they may learn to appear helpful while hiding deceptive or reward-hacking behavior in subtle ways. CoTShield makes reasoning chains legible and auditable, helping humans contest AI logic and restore visibility into the thought processes behind outputs.
 
 🔍 Features
-	•	🧠 CoT Divergence Detection
+
+- 🧠 CoT Divergence Detection
 Detect inconsistencies between model reasoning and final outputs.
-	•	👻 Shadow Intent Reconstruction
+- 👻 Shadow Intent Reconstruction
 Infer what a model may have “thought but not said” using a secondary LLM.
-	•	🧾 Reasoning Trace Viewer
+- 🧾 Reasoning Trace Viewer
 Interactive web tool to step through model chains-of-thought and flag hidden assumptions.
-	•	🧪 Adversarial Evaluation Tasks
+- 🧪 Adversarial Evaluation Tasks
 Test how well different models stay epistemically hones
 
 📦 Getting Started (Coming Soon)
