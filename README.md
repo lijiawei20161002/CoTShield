@@ -29,3 +29,18 @@ pip install -r requirements.txt
 You’ll need access to:
 - OpenAI / Claude / LLaMA-3 models (via API or local inference)
 - Sample task traces (we’ll provide a starter dataset)
+
+🗓️ Roadmap
+
+- [ ] v0.1: CoT Divergence Detector (rule-based)
+- [ ] v0.2: CoT Viewer Web Demo
+- [ ] v0.3: LLM-based Reconstructor
+- [ ] v1.0: Public MVP Release
+
+🙋‍♀️ Get Involved
+
+This project is open to collaboration. Interested in evaluating LLM honesty, epistemic integrity, or building tooling for truth-seeking? Open an issue or submit a pull request!
+
+📜 License
+
+MIT License
