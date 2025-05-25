@@ -26,3 +26,6 @@ git clone https://github.com/your-username/CoTShield
 cd CoTShield
 pip install -r requirements.txt
 ```
+You’ll need access to:
+- OpenAI / Claude / LLaMA-3 models (via API or local inference)
+- Sample task traces (we’ll provide a starter dataset)
