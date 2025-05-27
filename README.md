@@ -22,7 +22,7 @@ Test how well different models stay epistemically hones
 
 We are building a modular Python-based package that can be run locally or integrated into LLM eval pipelines.
 ```
-git clone https://github.com/your-username/CoTShield
+git clone https://github.com/lijiawei20161002/CoTShield.git
 cd CoTShield
 pip install -r requirements.txt
 ```
