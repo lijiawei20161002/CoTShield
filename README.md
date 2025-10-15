@@ -18,17 +18,78 @@ Interactive web tool to step through model chains-of-thought and flag hidden ass
 - 🧪 Adversarial Evaluation Tasks
 Test how well different models stay epistemically hones
 
-📦 Getting Started (Coming Soon)
+📦 Getting Started
 
-We are building a modular Python-based package that can be run locally or integrated into LLM eval pipelines.
-```
+### Prerequisites
+
+- Python 3.8 or higher
+- API keys for LLM providers (optional, required for intent reconstruction):
+  - OpenAI API key (for GPT models)
+  - Anthropic API key (for Claude models)
+
+### Installation
+
+1. Clone the repository:
+```bash
 git clone https://github.com/lijiawei20161002/CoTShield.git
 cd CoTShield
+```
+
+2. Install dependencies:
+```bash
 pip install -r requirements.txt
 ```
-You’ll need access to:
-- OpenAI / Claude / LLaMA-3 models (via API or local inference)
-- Sample task traces (we’ll provide a starter dataset)
+
+3. (Optional) Install as a package with CLI tool:
+```bash
+pip install -e .
+```
+
+4. (Optional) Set up API keys for LLM-based reconstruction:
+```bash
+cp .env.example .env
+# Edit .env and add your API keys
+```
+
+### Quick Start
+
+**Option 1: Run Basic Detection Example**
+```bash
+python examples/basic_detection.py
+```
+
+**Option 2: Use the CLI Tool** (after installing with `pip install -e .`)
+```bash
+# Analyze a reasoning trace
+cotshield analyze --reasoning "Let me think... The capital is Canberra." \
+                   --output "The capital is Sydney."
+
+# Start the interactive web viewer
+cotshield viewer
+
+# Run evaluations
+cotshield eval --responses-file your_responses.json
+```
+
+**Option 3: Start the Web Viewer**
+```bash
+python examples/run_viewer.py
+# Then open http://localhost:8000 in your browser
+```
+
+**Option 4: Use as a Python Library**
+```python
+from monitor.detector import analyze_cot_trace
+
+result = analyze_cot_trace(
+    reasoning="My step-by-step thinking...",
+    output="Final answer",
+    sensitivity=0.5
+)
+
+print(f"Risk Score: {result['risk_score']}")
+print(f"Flags: {result['flag_count']}")
+```
 
 🗓️ Roadmap
 
