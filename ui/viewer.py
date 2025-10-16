@@ -3,12 +3,16 @@ CoT Reasoning Trace Viewer - Interactive web interface for reviewing reasoning c
 """
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import json
+import sqlite3
 from pathlib import Path
+from datetime import datetime
+from contextlib import contextmanager
+import io
 
 
 class TraceSubmission(BaseModel):
@@ -18,6 +22,8 @@ class TraceSubmission(BaseModel):
     output: str
     model_name: Optional[str] = "unknown"
     context: Optional[str] = None
+    sensitivity: Optional[float] = 0.5
+    use_reconstructor: Optional[bool] = False
 
 
 class AnalysisRequest(BaseModel):
@@ -30,9 +36,54 @@ class AnalysisRequest(BaseModel):
 app = FastAPI(title="CoTShield Viewer", version="0.2.0")
 
 
-# In-memory storage (in production, use a database)
-traces_db = {}
-trace_counter = 0
+# Database configuration
+DB_PATH = Path(__file__).parent / "traces.db"
+
+
+@contextmanager
+def get_db():
+    """Get database connection with context manager."""
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def init_db():
+    """Initialize database schema."""
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS traces (
+                id TEXT PRIMARY KEY,
+                task TEXT NOT NULL,
+                reasoning TEXT NOT NULL,
+                output TEXT NOT NULL,
+                model_name TEXT,
+                context TEXT,
+                sensitivity REAL,
+                use_reconstructor INTEGER,
+                risk_score REAL,
+                flag_count INTEGER,
+                created_at TEXT NOT NULL,
+                analysis_json TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_created_at ON traces(created_at DESC)
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_risk_score ON traces(risk_score DESC)
+        """)
+
+
+# Initialize database on startup
+init_db()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -300,6 +351,10 @@ async def index():
                     <label class="input-label">Model Name (optional)</label>
                     <input type="text" id="model_name" placeholder="e.g., gpt-4, claude-3">
                 </div>
+                <div style="margin-bottom: 15px;">
+                    <label class="input-label">Detection Sensitivity (0.0 - 1.0)</label>
+                    <input type="number" id="sensitivity" min="0" max="1" step="0.1" value="0.5" placeholder="0.5">
+                </div>
                 <button class="btn" onclick="analyzeTrace()">🔍 Analyze Trace</button>
             </div>
 
@@ -316,9 +371,15 @@ async def index():
             const reasoning = document.getElementById('reasoning').value;
             const output = document.getElementById('output').value;
             const model_name = document.getElementById('model_name').value || 'unknown';
+            const sensitivity = parseFloat(document.getElementById('sensitivity').value) || 0.5;
 
             if (!task || !reasoning || !output) {
                 alert('Please fill in all required fields (task, reasoning, and output)');
+                return;
+            }
+
+            if (sensitivity < 0 || sensitivity > 1) {
+                alert('Sensitivity must be between 0.0 and 1.0');
                 return;
             }
 
@@ -338,7 +399,8 @@ async def index():
                         task,
                         reasoning,
                         output,
-                        model_name
+                        model_name,
+                        sensitivity
                     })
                 });
 
@@ -433,8 +495,6 @@ async def index():
 @app.post("/api/analyze")
 async def analyze_trace(submission: TraceSubmission):
     """Analyze a reasoning trace and return results."""
-    global trace_counter
-
     try:
         # Import detector
         import sys
@@ -443,26 +503,16 @@ async def analyze_trace(submission: TraceSubmission):
 
         from monitor.detector import analyze_cot_trace
 
-        # Perform analysis
+        # Perform analysis with configurable sensitivity
         result = analyze_cot_trace(
             reasoning=submission.reasoning,
             output=submission.output,
-            sensitivity=0.5
+            sensitivity=submission.sensitivity
         )
 
-        # Store trace
-        trace_id = f"trace_{trace_counter}"
-        trace_counter += 1
-
-        traces_db[trace_id] = {
-            "id": trace_id,
-            "task": submission.task,
-            "reasoning": submission.reasoning,
-            "output": submission.output,
-            "model_name": submission.model_name,
-            "context": submission.context,
-            "analysis": result
-        }
+        # Generate unique trace ID
+        trace_id = f"trace_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+        created_at = datetime.now().isoformat()
 
         # Format flags for JSON serialization
         formatted_flags = []
@@ -475,6 +525,37 @@ async def analyze_trace(submission: TraceSubmission):
                 "explanation": flag.explanation,
                 "line_number": flag.line_number
             })
+
+        # Store complete analysis in database
+        analysis_data = {
+            "risk_score": result["risk_score"],
+            "flag_count": result["flag_count"],
+            "severity_distribution": result["severity_distribution"],
+            "divergence_types": result["divergence_types"],
+            "flags": formatted_flags
+        }
+
+        with get_db() as conn:
+            conn.execute("""
+                INSERT INTO traces (
+                    id, task, reasoning, output, model_name, context,
+                    sensitivity, use_reconstructor, risk_score, flag_count,
+                    created_at, analysis_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                trace_id,
+                submission.task,
+                submission.reasoning,
+                submission.output,
+                submission.model_name,
+                submission.context,
+                submission.sensitivity,
+                1 if submission.use_reconstructor else 0,
+                result["risk_score"],
+                result["flag_count"],
+                created_at,
+                json.dumps(analysis_data)
+            ))
 
         return JSONResponse({
             "trace_id": trace_id,
@@ -492,43 +573,155 @@ async def analyze_trace(submission: TraceSubmission):
 @app.get("/api/traces")
 async def list_traces():
     """List all stored traces."""
-    return JSONResponse({"traces": list(traces_db.keys()), "count": len(traces_db)})
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT id, task, model_name, risk_score, flag_count, created_at
+            FROM traces
+            ORDER BY created_at DESC
+        """)
+        traces = []
+        for row in cursor:
+            traces.append({
+                "id": row["id"],
+                "task": row["task"][:100] + "..." if len(row["task"]) > 100 else row["task"],
+                "model_name": row["model_name"],
+                "risk_score": row["risk_score"],
+                "flag_count": row["flag_count"],
+                "created_at": row["created_at"]
+            })
+        return JSONResponse({"traces": traces, "count": len(traces)})
 
 
 @app.get("/api/traces/{trace_id}")
 async def get_trace(trace_id: str):
     """Get a specific trace by ID."""
-    if trace_id not in traces_db:
-        raise HTTPException(status_code=404, detail="Trace not found")
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT id, task, reasoning, output, model_name, context,
+                   sensitivity, use_reconstructor, created_at, analysis_json
+            FROM traces
+            WHERE id = ?
+        """, (trace_id,))
+        row = cursor.fetchone()
 
-    trace = traces_db[trace_id]
+        if not row:
+            raise HTTPException(status_code=404, detail="Trace not found")
 
-    # Format flags
-    formatted_flags = []
-    for flag in trace["analysis"]["flags"]:
-        formatted_flags.append({
-            "type": flag.type.value,
-            "severity": flag.severity,
-            "reasoning_snippet": flag.reasoning_snippet,
-            "output_snippet": flag.output_snippet,
-            "explanation": flag.explanation,
-            "line_number": flag.line_number
+        analysis = json.loads(row["analysis_json"])
+
+        return JSONResponse({
+            "trace_id": row["id"],
+            "task": row["task"],
+            "reasoning": row["reasoning"],
+            "output": row["output"],
+            "model_name": row["model_name"],
+            "context": row["context"],
+            "sensitivity": row["sensitivity"],
+            "use_reconstructor": bool(row["use_reconstructor"]),
+            "created_at": row["created_at"],
+            "analysis": analysis
         })
 
-    return JSONResponse({
-        "trace_id": trace["id"],
-        "task": trace["task"],
-        "reasoning": trace["reasoning"],
-        "output": trace["output"],
-        "model_name": trace["model_name"],
-        "analysis": {
-            "risk_score": trace["analysis"]["risk_score"],
-            "flag_count": trace["analysis"]["flag_count"],
-            "severity_distribution": trace["analysis"]["severity_distribution"],
-            "divergence_types": trace["analysis"]["divergence_types"],
-            "flags": formatted_flags
+
+@app.delete("/api/traces/{trace_id}")
+async def delete_trace(trace_id: str):
+    """Delete a specific trace by ID."""
+    with get_db() as conn:
+        cursor = conn.execute("SELECT id FROM traces WHERE id = ?", (trace_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Trace not found")
+
+        conn.execute("DELETE FROM traces WHERE id = ?", (trace_id,))
+        return JSONResponse({"message": "Trace deleted successfully", "trace_id": trace_id})
+
+
+@app.get("/api/traces/{trace_id}/export")
+async def export_trace(trace_id: str):
+    """Export a trace as JSON file."""
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT id, task, reasoning, output, model_name, context,
+                   sensitivity, use_reconstructor, created_at, analysis_json
+            FROM traces
+            WHERE id = ?
+        """, (trace_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Trace not found")
+
+        analysis = json.loads(row["analysis_json"])
+
+        export_data = {
+            "trace_id": row["id"],
+            "task": row["task"],
+            "reasoning": row["reasoning"],
+            "output": row["output"],
+            "model_name": row["model_name"],
+            "context": row["context"],
+            "sensitivity": row["sensitivity"],
+            "use_reconstructor": bool(row["use_reconstructor"]),
+            "created_at": row["created_at"],
+            "analysis": analysis
         }
-    })
+
+        # Create JSON file in memory
+        json_str = json.dumps(export_data, indent=2)
+        json_bytes = io.BytesIO(json_str.encode('utf-8'))
+
+        return StreamingResponse(
+            json_bytes,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename={trace_id}.json"
+            }
+        )
+
+
+@app.post("/api/traces/export-all")
+async def export_all_traces():
+    """Export all traces as JSON file."""
+    with get_db() as conn:
+        cursor = conn.execute("""
+            SELECT id, task, reasoning, output, model_name, context,
+                   sensitivity, use_reconstructor, created_at, analysis_json
+            FROM traces
+            ORDER BY created_at DESC
+        """)
+
+        all_traces = []
+        for row in cursor:
+            analysis = json.loads(row["analysis_json"])
+            all_traces.append({
+                "trace_id": row["id"],
+                "task": row["task"],
+                "reasoning": row["reasoning"],
+                "output": row["output"],
+                "model_name": row["model_name"],
+                "context": row["context"],
+                "sensitivity": row["sensitivity"],
+                "use_reconstructor": bool(row["use_reconstructor"]),
+                "created_at": row["created_at"],
+                "analysis": analysis
+            })
+
+        export_data = {
+            "export_date": datetime.now().isoformat(),
+            "trace_count": len(all_traces),
+            "traces": all_traces
+        }
+
+        # Create JSON file in memory
+        json_str = json.dumps(export_data, indent=2)
+        json_bytes = io.BytesIO(json_str.encode('utf-8'))
+
+        return StreamingResponse(
+            json_bytes,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename=cotshield_traces_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            }
+        )
 
 
 def start_viewer(host: str = "0.0.0.0", port: int = 8000):
