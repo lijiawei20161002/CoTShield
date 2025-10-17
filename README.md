@@ -7,6 +7,12 @@ CoTShield helps uncover what advanced language models are really “thinking”�
 
 As AI systems grow more capable and strategic, they may learn to appear helpful while hiding deceptive or reward-hacking behavior in subtle ways. CoTShield makes reasoning chains legible and auditable, helping humans contest AI logic and restore visibility into the thought processes behind outputs.
 
+<p align="center">
+  <a href="https://www.loom.com/share/33395b7836d1404b93fe7445183d76e6">
+    <img src="https://cdn.loom.com/sessions/thumbnails/33395b7836d1404b93fe7445183d76e6-with-preview.jpg" width="600">
+  </a>
+</p>
+
 🔍 Features
 
 - 🧠 CoT Divergence Detection
