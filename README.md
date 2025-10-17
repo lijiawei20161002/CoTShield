@@ -93,10 +93,10 @@ print(f"Flags: {result['flag_count']}")
 
 🗓️ Roadmap
 
-- [ ] v0.1: CoT Divergence Detector (rule-based)
-- [ ] v0.2: CoT Viewer Web Demo
-- [ ] v0.3: LLM-based Reconstructor
-- [ ] v1.0: Public MVP Release
+- [x] v0.1: CoT Divergence Detector (rule-based)
+- [x] v0.2: CoT Viewer Web Demo
+- [x] v0.3: LLM-based Reconstructor
+- [x] v1.0: Public MVP Release
 
 🙋‍♀️ Get Involved
 
