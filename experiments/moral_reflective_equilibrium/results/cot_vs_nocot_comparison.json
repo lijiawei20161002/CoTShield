@@ -1,0 +1,33 @@
+{
+  "baseline_metrics": {
+    "model": "ft:gpt-4o-mini-2024-07-18:afp1-5-safety-research-1:moral-reflective:D8oIPAb7",
+    "num_scenarios": 50,
+    "total_comparisons": 300,
+    "total_inconsistencies": 13,
+    "inconsistency_rate": 0.26,
+    "scenarios_with_inconsistencies": 9
+  },
+  "finetuned_metrics": {
+    "model": "ft:gpt-4o-mini-2024-07-18:afp1-5-safety-research-1:moral-reflective:D8oIPAb7",
+    "num_scenarios": 50,
+    "total_comparisons": 300,
+    "total_inconsistencies": 8,
+    "inconsistency_rate": 0.16,
+    "scenarios_with_inconsistencies": 6
+  },
+  "improvement": {
+    "absolute": -5,
+    "percentage": -38.46153846153847,
+    "rate_change": -0.1
+  },
+  "statistical_tests": {
+    "t_test": {
+      "statistic": 0.819288030372914,
+      "p_value": 0.4165892843698704
+    },
+    "wilcoxon": {
+      "statistic": 34.0,
+      "p_value": 0.3960724645385655
+    }
+  }
+}

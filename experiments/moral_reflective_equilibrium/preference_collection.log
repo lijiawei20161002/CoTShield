@@ -1,0 +1,7 @@
+Collecting model preferences...
+Processing scenarios:   0%|          | 0/50 [00:00<?, ?it/s]Processing scenarios:   2%|▏         | 1/50 [01:59<1:37:11, 119.02s/it]Traceback (most recent call last):
+  File "/mnt/nw/home/j.li/CoTShield/experiments/moral_reflective_equilibrium/scripts/resume_collection.py", line 17, in <module>
+    client = OpenAI(api_key=OPENAI_API_KEY)
+  File "/mnt/nw/home/j.li/.local/lib/python3.10/site-packages/openai/_client.py", line 137, in __init__
+    raise OpenAIError(
+openai.OpenAIError: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable

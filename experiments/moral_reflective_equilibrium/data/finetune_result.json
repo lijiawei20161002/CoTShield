@@ -1,0 +1,6 @@
+{
+  "job_id": "ftjob-U1N5ZaHFsTT5AX8aOx3MrV5j",
+  "status": "succeeded",
+  "finetuned_model": "ft:gpt-4o-mini-2024-07-18:afp1-5-safety-research-1:moral-reflective:D8oIPAb7",
+  "finished_at": "Fri Feb 13 14:18:51 2026"
+}

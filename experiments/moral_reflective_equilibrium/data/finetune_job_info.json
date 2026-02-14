@@ -1,0 +1,7 @@
+{
+  "job_id": "ftjob-U1N5ZaHFsTT5AX8aOx3MrV5j",
+  "train_file_id": "file-RfuvXbo6T18CED8QtF2BvZ",
+  "val_file_id": "file-9b1AGY9wMNzsXZETZHnTbF",
+  "base_model": "gpt-4o-mini-2024-07-18",
+  "timestamp": "2026-02-13 14:08:25"
+}

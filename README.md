@@ -97,12 +97,32 @@ print(f"Risk Score: {result['risk_score']}")
 print(f"Flags: {result['flag_count']}")
 ```
 
+🧪 Research Experiments
+
+CoTShield includes research experiments exploring AI consistency and value alignment:
+
+**Moral Reflective Equilibrium** (`experiments/moral_reflective_equilibrium/`)
+- Studies whether LLMs develop more consistent preferences when fine-tuned on reflections about their own inconsistencies
+- Tests systematic detection of transitivity violations in ethical judgments
+- Implements iterative refinement through self-reflection and continual learning
+- Full 8-step pipeline: scenario generation → preference collection → inconsistency detection → reflection → fine-tuning → evaluation
+- See [experiment README](experiments/moral_reflective_equilibrium/README.md) for details
+
+```bash
+cd experiments/moral_reflective_equilibrium
+python test_setup.py
+./run_pipeline.sh all
+```
+
 🗓️ Roadmap
 
 - [x] v0.1: CoT Divergence Detector (rule-based)
 - [x] v0.2: CoT Viewer Web Demo
 - [x] v0.3: LLM-based Reconstructor
 - [x] v1.0: Public MVP Release
+- [x] v1.1: Moral Reflective Equilibrium Experiment
+- [ ] v1.2: Integration of consistency metrics across experiments
+- [ ] v1.3: Unified dashboard for multi-experiment analysis
 
 🙋‍♀️ Get Involved
 
